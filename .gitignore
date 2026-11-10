@@ -1,6 +1,6 @@
 # data, runs and checkpoints live outside git
-data/
-runs/
+/data/
+/runs/
 *.pt
 *.h5
 *.hdf
