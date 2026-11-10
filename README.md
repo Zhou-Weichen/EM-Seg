@@ -100,11 +100,11 @@ loss on sampled points; 22 audited gold datasets; crops at random pixel size 4�
 
 ```bash
 conda activate em2d-train && source scripts/env.sh
-GPUS=0,1 tools/detach.sh teacher-L-gt22 scripts/20_train_teacher.sh teacher-L-gt22      # 40k steps, ~16 h
-tools/status.sh teacher-L-gt22
+GPUS=0,1 tools/detach.sh teacher scripts/20_train_teacher.sh teacher      # 40k steps, ~16 h
+tools/status.sh teacher
 ```
 
-Outputs in `$RUNS_ROOT/teacher-L-gt22/`: `ckpt/step_0{05,…,40}000.pt` (790 MB each), `ckpt/last.pt` (resume with `--resume`),
+Outputs in `$RUNS_ROOT/teacher/`: `ckpt/step_0{05,…,40}000.pt` (790 MB each), `ckpt/last.pt` (resume with `--resume`),
 `config.json`, `log.jsonl`.
 
 ---
@@ -115,24 +115,23 @@ Teacher affinities on every pool section (~8 nm/px, 1024² tiles) → mutex wate
 drop empty or degenerate sections.
 
 ```bash
-GPUS=0,1,2 scripts/30_pseudolabel.sh $RUNS_ROOT/teacher-L-gt22/ckpt/step_040000.pt T40k    # 3 shards, 4–5 h, 35 GB
+GPUS=0,1,2 scripts/30_pseudolabel.sh $RUNS_ROOT/teacher/ckpt/step_040000.pt teacher40k    # 3 shards, 4–5 h, 35 GB
 ```
 
-Outputs in `$EMDATA_ROOT/pseudo/T40k/`: corpus-shaped tree with `pseudo` (uint32) and `fg` (uint8), `rows_<shard>.csv`,
+Outputs in `$EMDATA_ROOT/pseudo/teacher40k/`: corpus-shaped tree with `pseudo` (uint32) and `fg` (uint8), `rows_<shard>.csv`,
 `stats.csv`. Re-running resumes.
 
 ---
 
 ## 🎓 5. Student
 
-Recipe **V2-A**: ConvNeXt-V2-L (ImageNet-22k), 50 % gold + 50 % pseudo-labels, loss normalised per source, pseudo-label weight
+ConvNeXt-V2-L (ImageNet-22k), 50 % gold + 50 % pseudo-labels, loss normalised per source, pseudo-label weight
 ramped over 4 k steps, 60 k steps.
 
 ```bash
-GPUS=0,1 tools/detach.sh student-L-v2a scripts/40_train_student.sh T40k student-L-v2a      # ~25 h
+GPUS=0,1 tools/detach.sh student scripts/40_train_student.sh teacher40k student      # ~25 h
 ```
 
-Smaller variant (ConvNeXt-V2-B from the teacher, 40 k steps): see the script header.
 
 ---
 
@@ -142,8 +141,8 @@ Zero-shot = the network's own affinity head + mutex watershed, grid chosen on va
 Fine-tune = 20 k iterations on the target training split, then the same selection and metrics.
 
 ```bash
-GPUS=0 scripts/50_evaluate.sh $RUNS_ROOT/student-L-v2a/ckpt/step_060000.pt student60k             # zero-shot: SNEMI + CREMI B
-GPUS=0 FINETUNE=1 scripts/50_evaluate.sh $RUNS_ROOT/teacher-L-gt22/ckpt/step_040000.pt teacher40k  # + fine-tune per domain
+GPUS=0 scripts/50_evaluate.sh $RUNS_ROOT/student/ckpt/step_060000.pt student60k             # zero-shot: SNEMI + CREMI B
+GPUS=0 FINETUNE=1 scripts/50_evaluate.sh $RUNS_ROOT/teacher/ckpt/step_040000.pt teacher40k  # + fine-tune per domain
 emseg-eval evaluate --domain cremi --sample B --split test --pred-dir <pred_XXXX.tif dir> --out <dir>  # any method, from label images
 ```
 
@@ -156,7 +155,7 @@ Per run: `done.json` (`voi_sum`, `voi_split`, `voi_merge`, `arand`, `msa`, `f1_5
 
 ```bash
 scripts/60_visualize.sh run zeroshot-student60k-cremiB   # EM | GT boundaries | GT | prediction (coloured by matching GT object)
-scripts/60_visualize.sh pseudo T40k                      # EM | boundaries | pseudo-instances | teacher foreground
+scripts/60_visualize.sh pseudo teacher40k                      # EM | boundaries | pseudo-instances | teacher foreground
 ```
 
 <p align="center"><img src="docs/example_cremiB.png" width="100%" alt="EM, GT boundaries, GT instances and student prediction on CREMI B"></p>
@@ -168,7 +167,7 @@ scripts/60_visualize.sh pseudo T40k                      # EM | boundaries | pse
 | model | SNEMI (AC3) | CREMI B | in-house target, zero-shot | in-house target, fine-tuned |
 |---|---|---|---|---|
 | teacher 40k | 0.255 | 0.340 | 0.866 | 0.389 |
-| student V2-A 60k | 0.280 | 0.360 | **0.748** (17/20 sections better) | 0.391 |
+| student 60k | 0.280 | 0.360 | **0.748** (17/20 sections better) | 0.391 |
 | in-domain U-Net, no pretraining | 0.27 | 0.47 | – | 0.484 |
 
 Pretraining lowers the fine-tuned target VOI from 0.48 to 0.39; pseudo-labels make the student beat its teacher zero-shot
@@ -176,23 +175,10 @@ on the unseen domain but add nothing after fine-tuning. Paired statistics, error
 
 ---
 
-## ❓ FAQ
-
-| symptom | fix |
-|---|---|
-| two GPUs hang at the first NCCL collective | `scripts/env.sh` sets `NCCL_P2P_DISABLE=1`; unset it on a healthy interconnect |
-| Zenodo 403 "unusual traffic" | one connection, one file at a time is already enforced; re-run, it resumes |
-| Google-Drive sources incomplete | `gdown` quota; partial folders are converted as far as they go |
-| cremi.org certificate error | expired certificate; the registry uses `--insecure` and verifies the published sha256 |
-| data loader uses too much RAM | HDF5 handles are a bounded LRU; use `--workers 3 --prefetch 2`; `tools/detach.sh` caps job memory |
-| own target volume | add a domain class to `emseg/eval/domains/`, register it in `domains/__init__.py` and `emseg/seg/mws.py: SCHEME` |
-
-## 📚 Licence and citation
+## 📚 Licence
 
 Code: MIT. Data: each source keeps its publisher's licence — see the tiers in
-[emseg/data/README.md](emseg/data/README.md#sources-and-licences) and cite the original publications. The recipe follows
-Depth Anything V2 / V3 (large teacher, pseudo-labels at scale, student) adapted to affinity-based instance segmentation;
-metrics follow the CREMI / SNEMI conventions.
+[emseg/data/README.md](emseg/data/README.md#sources-and-licences) and cite the original publications.
 
 ## 🤝 Contact
 

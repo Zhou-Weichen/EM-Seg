@@ -1,4 +1,4 @@
-"""Offline teacher pseudo-labels for student training (--exp I3).
+"""Offline teacher pseudo-labels for student training (--exp pseudo).
 
 For training rows without cell labels (excluding held-out datasets), at most --per-dataset rows per dataset: rescale the
 slice to ~--target-res nm/px (factor clipped to [0.5, 2]; unknown resolution -> 1), predict fg + disaffinities with the

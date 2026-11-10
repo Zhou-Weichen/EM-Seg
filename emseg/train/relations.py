@@ -1,4 +1,4 @@
-"""Instance-relation losses (P15) from pos/neg id maps (see data3).
+"""Instance-relation targets and losses from pos/neg id maps (see emseg.train.data).
 
 pair_targets: disaffinity targets for given offsets, torch_em AffinityTransform convention (channel o compares p with
 p + o; 1 = different objects). Pairs that are neither "same" (equal pos id >= 0) nor "different" (different neg ids,

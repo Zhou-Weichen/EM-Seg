@@ -1,4 +1,4 @@
-"""Raw-only cut-outs from public connectome volumes (cloud-volume, anonymous HTTPS) -> unlabelled pool for self-training (P15 I3).
+"""Raw-only cut-outs from public connectome volumes (cloud-volume, anonymous HTTPS) -> unlabelled pool for pseudo-labelling.
 
 Like emseg.data.converters.stream but without labels: S random slabs per source, `xy` x `xy` px and `nz` consecutive sections at the mip
 given in SOURCES (~8 nm/px). A slab is kept if the EM is not blank (std >= 5, <= 30 % saturated pixels) and, when the

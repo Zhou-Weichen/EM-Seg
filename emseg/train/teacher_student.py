@@ -1,8 +1,8 @@
-"""Instance-relation pretraining (P15). One driver, three label sources:
+"""Teacher / student trainer. One driver, three label sources:
 
-  --exp I1  superpixel pseudo-instances on all EM training images (no labels)
-  --exp I2  ground-truth cell instances of the labelled datasets  (teacher: --arch convnextv2_large --pretrained + clean --exclude)
-  --exp I3  ground truth where available + teacher pseudo-labels (--pseudo-root) elsewhere (self-training)
+  --exp gold         ground-truth cell instances of the labelled datasets (the teacher)
+  --exp pseudo       ground truth where available + teacher pseudo-labels (--pseudo-root) elsewhere (the student)
+  --exp superpixels  ridge-prior superpixels on all EM training images, no labels (weak baseline)
 Loss = masked BCE+Dice on fg + 8 disaffinities (1/3/9/27 px) at stride 1 + supervised contrastive loss on sampled
 points at two levels (p4 stride 4, feat stride 1). SNEMI3D held out by default; mouse30um is never in the corpus.
 Self-training options (Depth Anything V2/3 recipe): --ignore-top q drops the q fraction of largest-loss pixels of every
@@ -11,7 +11,7 @@ exp(-s)*L + lambda*s, Kendall & Gal) applied to pseudo-labelled images; --gt-sch
 sampling fraction at f0 until fraction t of the iterations, then f1 (GT first, teacher labels later).
 ckpt "model" = PretrainNet incl. extra.aff (first 7 channels = fg + emseg.seg.targets.OFFSETS_2D, so it can be used zero-shot).
 
-torchrun --nproc_per_node N -m emseg.train.teacher_student --run <name> --exp I2 --arch convnextv2_large --pretrained
+torchrun --nproc_per_node N -m emseg.train.teacher_student --run <name> --exp gold --arch convnextv2_large --pretrained
 """
 from __future__ import annotations
 
@@ -29,10 +29,10 @@ from emseg.train.data import InstIndex, InstCropDataset, parse_sched
 from emseg.models.pretrainnet import PretrainNet
 from emseg.train.relations import OFFSETS, pair_targets, ProjHead, sample_sup_points, supcon, read
 
-EXPS = {"I1": dict(sources={"gt": "", "other": "sp"}, gt_frac=None),
-        "I2": dict(sources={"gt": "cell", "other": ""}, gt_frac=None),
-        "I3": dict(sources={"gt": "cell", "other": "pl"}, gt_frac=0.5)}
-PL = 2   # data3 src code of pseudo-labelled images
+EXPS = {"gold": dict(sources={"gt": "cell", "other": ""}, gt_frac=None),
+        "pseudo": dict(sources={"gt": "cell", "other": "pl"}, gt_frac=0.5),
+        "superpixels": dict(sources={"gt": "", "other": "sp"}, gt_frac=None)}
+PL = 2   # src code of pseudo-labelled images in emseg.train.data
 
 
 def _dice(logits, tgt, msk, sel=None, eps=1e-6):
@@ -48,7 +48,7 @@ def masked_bce_dice(logits, tgt, msk, pl=None, ignore_top=0.0, conf=None, conf_l
     keep equal average weight) and an entropy regulariser lambda * mean(w log w); optimum w ∝ exp(-L/lambda).
     Returns (loss, mask actually used, mean conf weight on pl images (conf_norm: std of w))."""
     bce = torch.nn.functional.binary_cross_entropy_with_logits(logits, tgt, reduction="none") * msk
-    if pl is not None and pl.any() and ignore_top > 0:                      # DA-V2: drop the top-q largest-loss pixels per pseudo-labelled image
+    if pl is not None and pl.any() and ignore_top > 0:                      # Depth Anything V2: drop the top-q largest-loss pixels per pseudo-labelled image
         with torch.no_grad():
             pix = bce.sum(1) / msk.sum(1).clamp(min=1); anyv = msk.sum(1) > 0            # (B,H,W)
             keep = torch.ones_like(anyv)

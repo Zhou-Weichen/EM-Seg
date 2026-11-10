@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Zero-shot evaluation (checkpoint's own affinity head + mutex watershed, MWS grid selected on validation, metrics on test)
 # on SNEMI (AC3) and CREMI B, plus mouse30um when the in-house data is present; optionally the 20k-step fine-tune.
-#   GPUS=0 scripts/50_evaluate.sh $RUNS_ROOT/student-L-v2a-T40k/ckpt/step_060000.pt student60k            # zero-shot
+#   GPUS=0 scripts/50_evaluate.sh $RUNS_ROOT/student/ckpt/step_060000.pt student60k            # zero-shot
 #   GPUS=0 FINETUNE=1 scripts/50_evaluate.sh <ckpt> <name>                                                 # + fine-tune per domain
 # Results: $RUNS_ROOT/zeroshot-<name>-<domain>/done.json (test_summary.voi_sum etc.), test_per_slice.csv, pred/test/*.tif
 set -euo pipefail

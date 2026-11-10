@@ -1,4 +1,4 @@
-"""Instance-relation crops (P15: I1 superpixels / I2 ground truth / I3 teacher pseudo-labels).
+"""Training crops with instance relations from ground truth, teacher pseudo-labels or superpixels.
 
 Each item gives an augmented crop and two id maps that define pair relations:
   pos (H,W) int: pixels with equal non-negative pos id are "same object"   (-1 = no positive information)

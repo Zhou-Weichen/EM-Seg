@@ -1,4 +1,4 @@
-"""Pseudo-instance maps for instance-relation pretraining (I1: superpixels from the membrane ridge prior).
+"""Superpixels from the membrane ridge prior (label-free pseudo-instances).
 
 superpixels(img): distance-transform watershed on the ridge prior (Beier et al. 2017 procedure, elf), then region
 adjacency merging of all edges whose mean ridge value is below `merge_t` (weak internal borders -> fewer false
