@@ -1,261 +1,200 @@
 # 🧠 EM-Seg
 
-**Teacher–student pseudo-label pretraining for dense 2D instance segmentation of electron microscopy (EM).**
+**Teacher–student pseudo-label pretraining for dense 2D instance segmentation of electron microscopy.**
 
-Every cell profile in a section gets its own id. A network predicts a foreground map and affinities at 1 / 3 / 9 / 27 px,
-a mutex watershed turns them into instances. A large **teacher** is trained on 22 public, expert-labelled datasets; it
-labels ~130 k unlabelled sections cut from public connectomes; a **student** learns from gold labels and pseudo-labels
-together. Everything here is reproducible from public data with one command per stage.
+A network predicts foreground + affinities (1 / 3 / 9 / 27 px); a mutex watershed turns them into per-section instances.
+A large **teacher** is trained on 22 public expert-labelled datasets, labels ~130 k unlabelled sections from public
+connectomes, and a **student** learns from gold and pseudo-labels together. Everything is reproducible from public data,
+one command per stage.
 
 <p align="center"><img src="docs/overview.png" width="100%" alt="overview: public EM corpus, teacher, pseudo-labels, student"></p>
 
-## ✨ What is in the box
+## ✨ Contents
 
-| part | what it does | read more |
+| part | role | docs |
 |---|---|---|
-| 📦 `emseg/data/` | builds the labelled corpus from 30 public EM releases: download with checksums → one standard → QA → de-duplication → leakage scan → manifests (57 datasets, 68 k sections, gold / silver labels); streams the unlabelled pool (122 k raw sections) from 42 public connectomes | [emseg/data/README.md](emseg/data/README.md) |
-| 🧑‍🏫 🏷️ 🎓 `emseg/train/`, `emseg/models/`, `emseg/{pseudolabel,finetune,probe}.py` | teacher training, offline pseudo-labelling, student training, zero-shot evaluation, fine-tuning, frozen-feature probes | [docs/training.md](docs/training.md) |
-| 📏 `emseg/eval/`, `emseg/seg/` | the evaluation protocol: VOI, ARAND, mSA, F1 / PQ, error classes; benchmark loaders and splits; affinity targets and mutex-watershed decoding | [docs/evaluation.md](docs/evaluation.md) |
-| 🚀 `scripts/` | one resumable command per stage (`10_` data … `60_` figures) | this page |
-| 🧰 `tools/` | detached jobs with memory caps, auto-resume, pseudo-label statistics and figures | [tools/README.md](tools/README.md) |
-| 📈 `docs/` | results tables and the overview figure (`overview.png` / `.pdf`) | [docs/results.md](docs/results.md) |
+| 📦 `emseg/data/` | corpus from 30 public releases (57 datasets, 68 k labelled sections) and the unlabelled pool (42 connectomes, 122 k sections) | [emseg/data/README.md](emseg/data/README.md) |
+| 🧑‍🏫 🎓 `emseg/train/`, `emseg/models/`, `emseg/{pseudolabel,finetune,probe}.py` | teacher, pseudo-labels, student, zero-shot evaluation, fine-tuning, probes | [docs/training.md](docs/training.md) |
+| 📏 `emseg/eval/`, `emseg/seg/` | metrics (VOI, ARAND, mSA, F1/PQ, error classes), benchmark domains, affinity targets, mutex-watershed decoding | [docs/evaluation.md](docs/evaluation.md) |
+| 🚀 `scripts/` · 🧰 `tools/` | one resumable command per stage · detached jobs, auto-resume, downloader, figures | [tools/README.md](tools/README.md) |
+| 📈 `docs/` | overview figure, results tables | [docs/results.md](docs/results.md) |
 
-## 🗺️ Repository map
+## 🗺️ Layout
 
 ```
 EM-Seg/
-├── emseg/                      the package (pip install -e . or PYTHONPATH=<repo>)
-│   ├── data/                   corpus construction (data environment, no torch)
-│   │   ├── registry.py         every public source: URLs, checksums, licence, converter, leakage rules — the single source of truth
-│   │   ├── standard.py         the EMDATA-v2 file standard and the writers used by all converters
-│   │   ├── pipeline.py         runs the stages in order:  python -m emseg.data.pipeline all
-│   │   ├── stages/             download · provenance · convert · qa · dedup · manifest · report (+ datacard) · export_hf
-│   │   ├── converters/         downloaded (http releases) · benchmarks (SNEMI/CREMI/Lucchi/EMNeuron) · stream (connectomes) · asem · coco
-│   │   └── unlab.py            unlabelled pool from public connectome volumes
-│   ├── eval/                   protocol: metrics · gt · evaluate · errclass · cli (emseg-eval) · domains/{snemi,cremi,mouse30um}
-│   ├── seg/                    primitives: targets (affinity offsets, grids) · mws (decoding) · crops · unet · lsd · prior · superpixels
-│   ├── models/                 pretrainnet (ConvNeXt-V2 + full-res FPN + heads) · features (frozen extractors)
-│   ├── train/                  data (crop sampler over corpus + pseudo-labels) · relations (pair targets, contrastive loss) · teacher_student (trainer)
-│   ├── pseudolabel.py  finetune.py  probe.py  evalsuite.py      entry points:  python -m emseg.<name>
-│   └── paths.py                EMDATA_ROOT / RUNS_ROOT / EM2DSEG_DATA_ROOT resolution
-├── scripts/                    00_setup_envs 10_build_corpus 11_build_unlab_pool 12_get_benchmarks 20_train_teacher 30_pseudolabel 40_train_student 50_evaluate 60_visualize env.sh
-├── tools/                      detach.sh status.sh keepalive.sh (jobs) · pdl.py (downloader) · pseudo_stats.py pseudo_vis.py vis_predictions.py label_audit.py
-├── configs/                    unlab_sources_public.json (36 public volumes of the pool, with licences)
-├── tests/                      unit tests (metrics, targets, splits, loaders, data writers) — no data needed
-├── envs/                       train.yml  data.yml
-├── docs/                       overview.png/.pdf · results.md · training.md · evaluation.md · example_cremiB.png
-└── pyproject.toml  LICENSE  README.md
+├── emseg/                  the package  (pip install -e .  or  PYTHONPATH=<repo>)
+│   ├── data/               registry · standard · pipeline · stages/ · converters/ · unlab      (data env, no torch)
+│   ├── eval/               metrics · gt · evaluate · errclass · cli (emseg-eval) · domains/{snemi,cremi,mouse30um}
+│   ├── seg/                targets · mws · crops · unet · lsd · prior · superpixels
+│   ├── models/             pretrainnet (ConvNeXt-V2 + full-res FPN + heads) · features
+│   ├── train/              data (crop sampler) · relations (pair targets, contrastive loss) · teacher_student (trainer)
+│   ├── pseudolabel.py  finetune.py  probe.py  evalsuite.py       python -m emseg.<name>
+│   └── paths.py            EMDATA_ROOT / RUNS_ROOT / EM2DSEG_DATA_ROOT
+├── scripts/                00_setup_envs  10_build_corpus  11_build_unlab_pool  12_get_benchmarks
+│                           20_train_teacher  30_pseudolabel  40_train_student  50_evaluate  60_visualize  env.sh
+├── tools/                  detach.sh  status.sh  keepalive.sh  pdl.py  pseudo_stats.py  pseudo_vis.py  vis_predictions.py  label_audit.py
+├── configs/                unlab_sources_public.json
+├── tests/                  32 unit tests, no data needed
+├── envs/                   train.yml  data.yml
+└── docs/                   overview.png/.pdf  results.md  training.md  evaluation.md
 ```
 
-Dependencies between subpackages are one-directional: `eval` → `paths`; `seg` → `eval`; `models` → `seg`; `train` → `models`,
-`seg`; the entry modules `pseudolabel` / `finetune` / `probe` sit on top of them. `data` stands alone (it only imports
-`eval.domains` lazily for the benchmark leakage scan), so the data environment never needs torch.
-
-Everything that is not code lives outside git: `data/` (corpus, pool, pseudo-labels, benchmarks) and `runs/` (one directory
-per training or evaluation run). Both locations are set by two environment variables (next section).
+Dependencies are one-directional: `eval` → `paths`, `seg` → `eval`, `models` → `seg`, `train` → `models` + `seg`;
+`data` stands alone. `data/` and `runs/` (corpus, pool, pseudo-labels, checkpoints) live outside git.
 
 ---
 
 ## ⚙️ 1. Setup
 
-**Hardware.** Training was done on 2 × 96 GB GPUs (batch 16 per GPU, ~43 GB each for the ConvNeXt-V2-L teacher). Smaller
-GPUs work with a smaller `--batch` (the learning rate is scaled by the global batch automatically). Data building is CPU and
-network bound; plan for ~300 GB of disk (90 GB raw downloads, 40 GB converted corpus, 106 GB pool, 35 GB per pseudo-label pass).
-
-**Environments.** Two conda environments keep the heavy data stack (cloud-volume, zarr, datasets) away from the training stack
-(`pyproject.toml` lists the same dependencies as extras `[train]` / `[data]` if you prefer pip):
-
 ```bash
 git clone https://github.com/Zhou-Weichen/EM-Seg.git && cd EM-Seg
-bash scripts/00_setup_envs.sh          # creates em2d-train (torch, timm, python-elf, torch_em) and em2d-data (cloud-volume, zarr, datasets)
-```
-
-If you prefer pip, the training code needs `torch timm python-elf torch_em h5py pandas scipy scikit-image tifffile`
-(tested with Python 3.14, torch 2.13, timm 1.0.29, python-elf 0.9.2, torch_em 0.10.4; any torch ≥ 2.4 should do).
-
-**Roots and paths.** Every script sources `scripts/env.sh`, which sets
-
-| variable | default | meaning |
-|---|---|---|
-| `EMDATA_ROOT` | `<repo>/data` | corpus (`em/`, `em2d/`, `manifests/`), pool (`unlab/`), pseudo-labels (`pseudo/`), benchmarks (`benchmarks/`) |
-| `RUNS_ROOT` | `<repo>/runs` | one directory per run: `config.json`, `log.jsonl`, `ckpt/`, `pred/`, `done.json` |
-| `EM2DSEG_DATA_ROOT` | `$EMDATA_ROOT/benchmarks` | SNEMI / CREMI volumes used for evaluation and fine-tuning |
-| `PYTHON` | `python` | interpreter of the active environment |
-
-Point them at a large disk before the first run, e.g. `export EMDATA_ROOT=/mnt/fast/em2d/data RUNS_ROOT=/mnt/fast/em2d/runs`.
-When you call the Python modules directly (not through `scripts/`), run `source scripts/env.sh` first: it also sets
-`PYTHONPATH` so that `python -m emseg.…` works from anywhere (or `pip install -e .` once).
-
-**Check.**
-
-```bash
+bash scripts/00_setup_envs.sh            # conda envs: em2d-train (torch, timm, python-elf, torch_em) · em2d-data (cloud-volume, zarr, datasets)
 conda activate em2d-train && source scripts/env.sh
-python -c "import torch, timm, elf, torch_em; print(torch.__version__, torch.cuda.is_available())"
-python -m unittest discover -s tests                     # 32 tests: metrics, targets, splits, loaders, data writers
+python -m unittest discover -s tests     # 32 tests
 ```
+
+| variable (set by `scripts/env.sh`) | default | holds |
+|---|---|---|
+| `EMDATA_ROOT` | `<repo>/data` | corpus, pool, pseudo-labels, benchmarks |
+| `RUNS_ROOT` | `<repo>/runs` | one directory per run: `config.json`, `log.jsonl`, `ckpt/`, `pred/`, `done.json` |
+| `EM2DSEG_DATA_ROOT` | `$EMDATA_ROOT/benchmarks` | SNEMI / CREMI evaluation volumes |
+
+- Export `EMDATA_ROOT` / `RUNS_ROOT` to a large disk first: ~300 GB (90 GB raw downloads, 40 GB corpus, 106 GB pool, 35 GB per pseudo-label pass).
+- Reference hardware: 2 × 96 GB GPUs (batch 16 per GPU, ~43 GB for ConvNeXt-V2-L). Smaller GPUs: lower `--batch`; the learning rate scales with the global batch.
+- Tested with Python 3.14, torch 2.13, timm 1.0.29, python-elf 0.9.2, torch_em 0.10.4; `pyproject.toml` lists the same dependencies as extras `[train]` / `[data]`.
 
 ---
 
 ## 📦 2. Data
 
-Two ways to get the data; both end in the same layout under `$EMDATA_ROOT`.
-
-**🛠️ Route A – build it from the public releases** (the reference; every byte is traceable to a public URL):
+**Route A — build from the public releases** (every byte traceable to a public URL):
 
 ```bash
 conda activate em2d-data && source scripts/env.sh
-tools/detach.sh DATA-corpus scripts/10_build_corpus.sh      # 30 releases → 57 datasets; resumable; a day or more (throttled hosts)
+tools/detach.sh DATA-corpus scripts/10_build_corpus.sh      # 30 releases → 57 datasets; resumable; a day or more
 tools/detach.sh DATA-pool   scripts/11_build_unlab_pool.sh  # 42 connectomes → 122 k unlabelled sections; ~1 day
-scripts/12_get_benchmarks.sh                                # SNEMI AC4/AC3 + CREMI B for evaluation (0.9 GB)
+scripts/12_get_benchmarks.sh                                # SNEMI AC4/AC3 + CREMI B (0.9 GB)
 tools/status.sh DATA-corpus                                 # progress; also $EMDATA_ROOT/STATUS.md
 ```
 
-**📬 Route B – ask us for what we are allowed to pass on.** The open-licence part of the processed corpus (CC0 / CC-BY / MIT
-sources, 41 k sections), the pool slab list, the pseudo-labels and the checkpoints can be shared on request for research use.
-Sources with non-redistributable licences (EMNeuron, FIB-25, SNEMI3D, ISBI 2012, Lucchi, COCO) and the in-house target volume
-cannot be shared by us; route A rebuilds the former from the publishers. See [emseg/data/README.md § B](emseg/data/README.md#b-get-the-processed-corpus-from-us).
+**Route B — ask us for what may be shared**: the open-licence subset (CC0 / CC-BY / MIT, 41 k sections), the pool slab list,
+pseudo-labels and checkpoints, for research use. Non-redistributable sources (EMNeuron, FIB-25, SNEMI3D, ISBI 2012, Lucchi,
+COCO) and the in-house target volume are not shared; route A rebuilds the former.
+→ [emseg/data/README.md § B](emseg/data/README.md#b-get-the-processed-corpus-from-us)
 
-What you should have afterwards:
-
-| path | contents |
+| result | contents |
 |---|---|
-| `$EMDATA_ROOT/manifests/em_only.csv` | one row per labelled EM section: file, z, size, pixel size, classes, quality, split, sampling weight |
-| `$EMDATA_ROOT/manifests/unlab.csv` | one row per raw pool section (same columns, no classes) |
-| `$EMDATA_ROOT/em/<dataset>/<volume>.h5`, `em2d/<dataset>/shard_*.h5` | uint8 `raw`, `labels/<class>`, `masks/<class>` |
+| `$EMDATA_ROOT/manifests/em_only.csv` | one row per labelled section: file, z, size, pixel size, classes, quality, split, weight |
+| `$EMDATA_ROOT/manifests/unlab.csv` | one row per raw pool section |
+| `$EMDATA_ROOT/em/*/*.h5`, `em2d/*/shard_*.h5` | uint8 `raw`, `labels/<class>`, `masks/<class>` |
 | `$EMDATA_ROOT/unlab/unlab_<source>/slab_*.h5` | raw 4 × 1024² slabs |
 | `$EMDATA_ROOT/benchmarks/{snemi,cremi}/` | evaluation volumes |
 
-The in-house target volume used in our paper-style numbers is not public; all commands below work without it.
-
 ---
 
-## 🧑‍🏫 3. Train the teacher
+## 🧑‍🏫 3. Teacher
 
-ConvNeXt-V2-L (ImageNet-22k initialisation) with a full-resolution FPN decoder, trained on the 22 gold datasets that passed
-the label audit (`tools/label_audit.py`), with a masked BCE + Dice loss on foreground + 8 affinities and a supervised
-contrastive loss on sampled points. Crops are drawn at a random physical pixel size in 4–16 nm so one network serves all
-resolutions.
+ConvNeXt-V2-L (ImageNet-22k) + full-resolution FPN; masked BCE + Dice on foreground + 8 affinities, supervised contrastive
+loss on sampled points; 22 audited gold datasets; crops at random pixel size 4–16 nm.
 
 ```bash
 conda activate em2d-train && source scripts/env.sh
-GPUS=0,1 tools/detach.sh teacher-L-gt22 scripts/20_train_teacher.sh teacher-L-gt22      # 40k steps, ~16 h on 2 × 96 GB
-tools/status.sh teacher-L-gt22                                                          # it 100 loss … 24.1 img/s
+GPUS=0,1 tools/detach.sh teacher-L-gt22 scripts/20_train_teacher.sh teacher-L-gt22      # 40k steps, ~16 h
+tools/status.sh teacher-L-gt22
 ```
 
-Outputs: `$RUNS_ROOT/teacher-L-gt22/ckpt/step_0{05,10,…,40}000.pt` (model + args, 790 MB each), `ckpt/last.pt` (resumable),
-`config.json` (dataset list, rows per dataset, effective lr), `log.jsonl`. Resume after an interruption with the same command
-plus `--resume $RUNS_ROOT/teacher-L-gt22/ckpt/last.pt`, or let `tools/keepalive.sh` do it automatically (§ 8).
+Outputs in `$RUNS_ROOT/teacher-L-gt22/`: `ckpt/step_0{05,…,40}000.pt` (790 MB each), `ckpt/last.pt` (resume with `--resume`),
+`config.json`, `log.jsonl`.
 
 ---
 
-## 🏷️ 4. Pseudo-label the pool
+## 🏷️ 4. Pseudo-labels
 
-The teacher predicts affinities on every pool section (rescaled to ~8 nm/px, 1024² tiles), a mutex watershed turns them into
-instances, and a per-section statistics file lets the student drop empty or degenerate sections (resin, noise, one segment).
+Teacher affinities on every pool section (~8 nm/px, 1024² tiles) → mutex watershed → instances; `stats.csv` lets the student
+drop empty or degenerate sections.
 
 ```bash
-GPUS=0,1,2 scripts/30_pseudolabel.sh $RUNS_ROOT/teacher-L-gt22/ckpt/step_040000.pt T40k    # 3 shards in parallel, 4–5 h, 35 GB
-scripts/60_visualize.sh pseudo T40k                                                       # look at a few panels per dataset
+GPUS=0,1,2 scripts/30_pseudolabel.sh $RUNS_ROOT/teacher-L-gt22/ckpt/step_040000.pt T40k    # 3 shards, 4–5 h, 35 GB
 ```
 
-Outputs under `$EMDATA_ROOT/pseudo/T40k/`: the same file tree as the corpus with `pseudo` (uint32 ids) and `fg` (uint8) per
-section, `rows_<shard>.csv`, `stats.csv`, `config.json`. Re-running resumes (written sections are skipped).
+Outputs in `$EMDATA_ROOT/pseudo/T40k/`: corpus-shaped tree with `pseudo` (uint32) and `fg` (uint8), `rows_<shard>.csv`,
+`stats.csv`. Re-running resumes.
 
 ---
 
-## 🎓 5. Train the student
+## 🎓 5. Student
 
-Recipe **V2-A**: a second ConvNeXt-V2-L (ImageNet-22k init) trained jointly on the 22 gold datasets (50 % of the samples) and
-the pseudo-labelled pool (50 %), with the two loss terms normalised per source and the pseudo-label weight ramped up over
-the first 4 k steps, 60 k steps in total.
+Recipe **V2-A**: ConvNeXt-V2-L (ImageNet-22k), 50 % gold + 50 % pseudo-labels, loss normalised per source, pseudo-label weight
+ramped over 4 k steps, 60 k steps.
 
 ```bash
 GPUS=0,1 tools/detach.sh student-L-v2a scripts/40_train_student.sh T40k student-L-v2a      # ~25 h
 ```
 
-A smaller student (ConvNeXt-V2-B initialised from the teacher, 40 k steps) is one line in the script header. Pseudo-labels
-from several teacher checkpoints can be compared by running step 4 with different tags.
+Smaller variant (ConvNeXt-V2-B from the teacher, 40 k steps): see the script header.
 
 ---
 
 ## 📊 6. Evaluate
 
-Zero-shot: the network's own affinity head + mutex watershed, grid selected on the validation split, metrics on the test
-split. Fine-tuning: 20 k iterations on the target training split, same selection and metrics.
+Zero-shot = the network's own affinity head + mutex watershed, grid chosen on validation, metrics on test.
+Fine-tune = 20 k iterations on the target training split, then the same selection and metrics.
 
 ```bash
-GPUS=0 scripts/50_evaluate.sh $RUNS_ROOT/student-L-v2a/ckpt/step_060000.pt student60k            # zero-shot on SNEMI + CREMI B
-GPUS=0 FINETUNE=1 scripts/50_evaluate.sh $RUNS_ROOT/teacher-L-gt22/ckpt/step_040000.pt teacher40k  # + 20k-step fine-tune per domain
+GPUS=0 scripts/50_evaluate.sh $RUNS_ROOT/student-L-v2a/ckpt/step_060000.pt student60k             # zero-shot: SNEMI + CREMI B
+GPUS=0 FINETUNE=1 scripts/50_evaluate.sh $RUNS_ROOT/teacher-L-gt22/ckpt/step_040000.pt teacher40k  # + fine-tune per domain
+emseg-eval evaluate --domain cremi --sample B --split test --pred-dir <pred_XXXX.tif dir> --out <dir>  # any method, from label images
 ```
 
-Each run writes `done.json` (`test_summary`: `voi_sum`, `voi_split`, `voi_merge`, `arand`, `msa`, `f1_50`, `pq50`, error
-classes `M1_invisible`, `M2_chain`, `S1_cut`, `S2_sliver`, …), `test_per_slice.csv`, `val_grid.json` and the test predictions
-`pred/test/pred_XXXX.tif`. Any other method can be scored the same way from label images:
-
-```bash
-python -m emseg.eval.cli evaluate --domain cremi --sample B --split test --pred-dir <dir with pred_0100.tif …> --out <dir>
-```
+Per run: `done.json` (`voi_sum`, `voi_split`, `voi_merge`, `arand`, `msa`, `f1_50`, `pq50`, `M1_invisible`, `M2_chain`,
+`S1_cut`, `S2_sliver`), `test_per_slice.csv`, `val_grid.json`, `pred/test/pred_XXXX.tif`.
 
 ---
 
 ## 🎨 7. Visualize
 
 ```bash
-scripts/60_visualize.sh run zeroshot-student60k-cremiB         # EM | GT boundaries | GT | prediction, prediction coloured by matching GT object
-scripts/60_visualize.sh pseudo T40k                            # pseudo-label panels: EM | boundaries | instances | teacher foreground
+scripts/60_visualize.sh run zeroshot-student60k-cremiB   # EM | GT boundaries | GT | prediction (coloured by matching GT object)
+scripts/60_visualize.sh pseudo T40k                      # EM | boundaries | pseudo-instances | teacher foreground
 ```
 
 <p align="center"><img src="docs/example_cremiB.png" width="100%" alt="EM, GT boundaries, GT instances and student prediction on CREMI B"></p>
 
 ---
 
-## 📈 Results in one glance (single seed, VOI sum ↓)
+## 📈 Results (single seed, VOI sum ↓)
 
-| model | SNEMI (AC3) | CREMI B | in-house target (zero-shot) | in-house target (fine-tuned 20k) |
+| model | SNEMI (AC3) | CREMI B | in-house target, zero-shot | in-house target, fine-tuned |
 |---|---|---|---|---|
 | teacher 40k | 0.255 | 0.340 | 0.866 | 0.389 |
-| student V2-A 60k | 0.280 | 0.360 | **0.748** (17/20 sections better than the teacher) | 0.391 |
+| student V2-A 60k | 0.280 | 0.360 | **0.748** (17/20 sections better) | 0.391 |
 | in-domain U-Net, no pretraining | 0.27 | 0.47 | – | 0.484 |
 
-Multi-source supervised pretraining lowers the fine-tuned target VOI from 0.48 to 0.39; pseudo-labels make the student the
-first model that beats its teacher zero-shot on the unseen target domain, but do not add anything after fine-tuning.
-Details, paired statistics, error classes and ablations: [docs/results.md](docs/results.md).
+Pretraining lowers the fine-tuned target VOI from 0.48 to 0.39; pseudo-labels make the student beat its teacher zero-shot
+on the unseen domain but add nothing after fine-tuning. Paired statistics, error classes, ablations: [docs/results.md](docs/results.md).
 
 ---
 
-## 🧰 8. Long jobs: detach, monitor, resume, memory
-
-- `tools/detach.sh <name> <command…>` starts a command detached from your terminal, logs to `$RUNS_ROOT/<name>/logs/stdout.log`
-  and, when `systemd-run` is available, caps its memory (32 GB per job, 64 GB for all jobs, no swap) so a leaking data loader
-  cannot take the host down. `tools/status.sh <name>` shows whether it is alive and the log tail.
-- `tools/keepalive.sh <run> <launch command…>` restarts a training run from `ckpt/last.pt` whenever its process dies
-  (shared GPUs, OOM). Both trainers also accept `--resume` by hand.
-- All stages are idempotent: re-running skips finished downloads, conversions and pseudo-labelled sections.
-
 ## ❓ FAQ
 
-- **Two GPUs hang at the first NCCL collective.** `scripts/env.sh` sets `NCCL_P2P_DISABLE=1`, which fixes this on hosts with
-  P2P problems; unset it if your interconnect is healthy.
-- **Zenodo answers 403 / "unusual traffic".** The downloader already uses one connection and one file at a time for
-  zenodo.org and an honest user agent; just re-run, it resumes.
-- **Google-Drive sources are incomplete.** `gdown` quotas: NucMM-Z labels arrive partially; the converter uses what is there.
-  ProbTEM is off by default for that reason.
-- **cremi.org certificate errors.** Expired TLS certificate on the server; the registry passes `--insecure` and verifies the
-  published sha256 instead.
-- **The data loader eats RAM.** HDF5 handles are kept in a bounded LRU (32 per worker); use `--workers 3 --prefetch 2` for
-  the student (one file per section in the pool) and let `tools/detach.sh` cap the job.
-- **Can I use my own volume as the target domain?** Add a loader class to `emseg/eval/domains/` with `load_image`,
-  `load_label`, `splits`, register it in `domains/__init__.py` and `emseg/seg/mws.py: SCHEME`; `finetune.py` and the scripts pick it up.
+| symptom | fix |
+|---|---|
+| two GPUs hang at the first NCCL collective | `scripts/env.sh` sets `NCCL_P2P_DISABLE=1`; unset it on a healthy interconnect |
+| Zenodo 403 "unusual traffic" | one connection, one file at a time is already enforced; re-run, it resumes |
+| Google-Drive sources incomplete | `gdown` quota; partial folders are converted as far as they go |
+| cremi.org certificate error | expired certificate; the registry uses `--insecure` and verifies the published sha256 |
+| data loader uses too much RAM | HDF5 handles are a bounded LRU; use `--workers 3 --prefetch 2`; `tools/detach.sh` caps job memory |
+| own target volume | add a domain class to `emseg/eval/domains/`, register it in `domains/__init__.py` and `emseg/seg/mws.py: SCHEME` |
 
-## 📚 Citing and licences
+## 📚 Licence and citation
 
-The code is MIT-licensed. Every dataset keeps the licence of its publisher — see the source table and the redistribution
-tiers in [emseg/data/README.md](emseg/data/README.md#sources-and-licences) and cite the original publications of the data you use.
-The method follows the Depth Anything V2 / V3 recipe (large teacher, pseudo-labels at scale, student) adapted to affinity-based
-instance segmentation; the metrics follow the CREMI / SNEMI conventions.
+Code: MIT. Data: each source keeps its publisher's licence — see the tiers in
+[emseg/data/README.md](emseg/data/README.md#sources-and-licences) and cite the original publications. The recipe follows
+Depth Anything V2 / V3 (large teacher, pseudo-labels at scale, student) adapted to affinity-based instance segmentation;
+metrics follow the CREMI / SNEMI conventions.
 
 ## 🤝 Contact
 
-Questions, access to the shareable data (open-licence corpus subset, slab list, pseudo-labels, checkpoints): open an issue on
-this repository or e-mail the maintainer <!-- add your address here -->. Data under non-redistributable licences and the
-in-house volume are not shared; see [emseg/data/README.md § B](emseg/data/README.md#b-get-the-processed-corpus-from-us).
+Open an issue or e-mail the maintainer <!-- add your address here -->. Shareable data (open-licence subset, slab list,
+pseudo-labels, checkpoints): [emseg/data/README.md § B](emseg/data/README.md#b-get-the-processed-corpus-from-us).
