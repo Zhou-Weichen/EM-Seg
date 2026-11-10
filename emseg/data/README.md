@@ -9,7 +9,9 @@ There are two ways to get the data:
 
 - **🛠️ A. Build it yourself from the public releases** — step-by-step below. Every file is downloaded from its publisher,
   checksummed and logged, so the corpus is fully reproducible and you accept each source's licence yourself.
-- **📬 B. Get the processed corpus from us** — if you do not want to spend the day of downloading, [contact us](#b-get-the-processed-corpus-from-us).
+- **📬 B. Get what we are allowed to pass on** — the open-licence part of the processed corpus, the pseudo-labels and the
+  checkpoints can be shared on request; sources with non-redistributable licences and the in-house volume cannot, and are
+  rebuilt from the publishers with one command. [Details](#b-get-the-processed-corpus-from-us).
 
 ---
 
@@ -218,25 +220,35 @@ set can be *rebuilt* by anyone but not *re-hosted* by us.
 
 ## B. Get the processed corpus from us
 
-If rebuilding is not an option, **contact us** (open an issue on this repository or e-mail the maintainer
-<!-- add your address here -->) and tell us what you need. We can share:
+We can only pass on what the licence of each source allows. Everything else is reproducible with route A, which downloads it
+from the original publishers in the same layout. If you want to skip the parts that may be shared, **contact us** (open an
+issue on this repository or e-mail the maintainer <!-- add your address here -->) and tell us what you need.
 
-- 🤗 the **Hugging Face export** of the corpus (private dataset repository; Parquet with typed features and a data card):
-  `em_open` (41 024 / 3 827 sections, 13 GB, redistributable sources), `em_full` (62 419 / 5 672, 30 GB, all EM rows) and
-  `em_plus_natural` (+ COCO, 44 GB). Access is granted for research use under the licences of the individual sources;
-  `em_full` contains research-use-only sources and must not be passed on.
-- 💾 the **HDF5 corpus + manifests** that this code reads directly (36 GB), the **unlabelled pool** (106 GB) and the
-  **pseudo-labels** of the released teacher (35 GB per pass) — large, shared on request.
-- 🧠 teacher / student **checkpoints**.
+| item | can we share it? | how |
+|---|---|---|
+| `em_open` config — 41 024 train / 3 827 val sections from CC0 / CC-BY / MIT sources (13 GB Parquet) | ✅ yes | access to our private Hugging Face dataset, for research use with attribution to each source |
+| `em_nc` config — 1 124 sections from CC BY-NC(-SA) sources (VNC, Wafer4, MitoEM) | ✅ non-commercial research only | same repository, separate config |
+| HDF5 layout + manifests of the same open / nc subset (what this code reads) | ✅ yes | archive on request |
+| `check`-tier sources — EMNeuron (9 878 sections), FIB-25 (1 290), nuclei crops (10 606) | ❌ not by us | their licences inherit from the original data; `scripts/10_build_corpus.sh` fetches and converts them in under an hour |
+| `restricted` sources — SNEMI3D, ISBI 2012, Lucchi, COCO images | ❌ not by us | challenge / research-use terms; download from the publisher pages listed in the table above |
+| `em_full` / `em_plus_natural` configs | ❌ no | they contain the two groups above; the pipeline builds them locally |
+| unlabelled pool — 121 824 raw slabs from 42 public connectome volumes | ✅ the slab list, raw slabs on request where the volume licence allows (CC-BY FlyEM, MICrONS, H01) | `download_log.jsonl` records bucket, mip, bounding box and sha256 of every slab, so `emseg.data.unlab` re-streams an identical pool |
+| teacher pseudo-labels for that pool (130 k sections, 35 GB per teacher checkpoint) | ✅ yes, research use | label maps only, keyed to the slab list |
+| teacher / student checkpoints | ✅ yes, research use only | trained on data that includes non-commercial and research-use-only sources |
+| the in-house target volume used for the fine-tuning numbers | ❌ never | — |
+
+Note that the teacher's 22 gold datasets draw 3 597 sections from `open` sources but 9 221 from `check` (EMNeuron, FIB-25),
+134 from `nc` and 26 from `restricted` (ISBI 2012): the exact teacher training set can be **rebuilt** by anyone with route A,
+but we cannot hand it over as a whole.
 
 Once you have access to the Hugging Face repository:
 
 ```bash
 pip install -U "huggingface_hub[cli]" && hf auth login
-hf download <repo-id> --repo-type dataset --include "data/em_full/*" README.md classes.json sampler.py --local-dir $EMDATA_ROOT/hf/emdata-v2
-python -c "from datasets import load_dataset; ds = load_dataset('parquet', data_files='$EMDATA_ROOT/hf/emdata-v2/data/em_full/train-*.parquet'); print(ds)"
+hf download <repo-id> --repo-type dataset --include "data/em_open/*" README.md classes.json sampler.py --local-dir $EMDATA_ROOT/hf/emdata-v2
+python -c "from datasets import load_dataset; ds = load_dataset('parquet', data_files='$EMDATA_ROOT/hf/emdata-v2/data/em_open/train-*.parquet'); print(ds)"
 ```
 
-`sampler.py` in the repository shows weighted sampling and the decoding of the per-class instance PNGs. Note that the
-training scripts here consume the HDF5 layout (`em/`, `em2d/`, `manifests/`); ask for that layout if you want to retrain
-rather than build your own loader on the Parquet files.
+`sampler.py` in the repository shows weighted sampling and the decoding of the per-class instance PNGs. The training
+scripts here consume the HDF5 layout (`em/`, `em2d/`, `manifests/`); ask for that layout if you want to retrain on the open
+subset, and run route A to add the sources we cannot redistribute.

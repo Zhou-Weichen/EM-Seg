@@ -110,9 +110,10 @@ scripts/12_get_benchmarks.sh                                # SNEMI AC4/AC3 + CR
 tools/status.sh DATA-corpus                                 # progress; also $EMDATA_ROOT/STATUS.md
 ```
 
-**📬 Route B – ask us for the processed corpus.** The converted corpus is mirrored in a private Hugging Face dataset
-(Parquet, three licence-tiered configs); the HDF5 layout that this code reads, the pseudo-labels and the pool can be shared
-on request as well. See [emseg/data/README.md § B](emseg/data/README.md#b-get-the-processed-corpus-from-us).
+**📬 Route B – ask us for what we are allowed to pass on.** The open-licence part of the processed corpus (CC0 / CC-BY / MIT
+sources, 41 k sections), the pool slab list, the pseudo-labels and the checkpoints can be shared on request for research use.
+Sources with non-redistributable licences (EMNeuron, FIB-25, SNEMI3D, ISBI 2012, Lucchi, COCO) and the in-house target volume
+cannot be shared by us; route A rebuilds the former from the publishers. See [emseg/data/README.md § B](emseg/data/README.md#b-get-the-processed-corpus-from-us).
 
 What you should have afterwards:
 
@@ -255,5 +256,6 @@ instance segmentation; the metrics follow the CREMI / SNEMI conventions.
 
 ## 🤝 Contact
 
-Questions, the processed corpus, pseudo-labels or checkpoints: open an issue on this repository or e-mail the maintainer
-<!-- add your address here -->.
+Questions, access to the shareable data (open-licence corpus subset, slab list, pseudo-labels, checkpoints): open an issue on
+this repository or e-mail the maintainer <!-- add your address here -->. Data under non-redistributable licences and the
+in-house volume are not shared; see [emseg/data/README.md § B](emseg/data/README.md#b-get-the-processed-corpus-from-us).
