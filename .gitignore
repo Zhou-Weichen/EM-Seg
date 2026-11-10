@@ -1,0 +1,16 @@
+# data, runs and checkpoints live outside git
+data/
+runs/
+*.pt
+*.h5
+*.hdf
+*.tif
+*.tiff
+*.parquet
+
+__pycache__/
+*.pyc
+*.egg-info/
+.ipynb_checkpoints/
+.DS_Store
+.vscode/

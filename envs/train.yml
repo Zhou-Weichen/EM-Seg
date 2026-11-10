@@ -1,0 +1,24 @@
+# Training / evaluation environment (teacher, pseudo-labels, student, fine-tuning, metrics).
+# Tested with Python 3.14, torch 2.13.0 (CUDA 12.8, Blackwell sm_120), timm 1.0.29, python-elf 0.9.2, torch_em 0.10.4.
+# Any torch >= 2.4 with a CUDA build matching your driver should work; bf16 autocast is used everywhere.
+name: em2d-train
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.11
+  - pytorch>=2.4            # pick the CUDA build for your driver, e.g. "pytorch=*=*cuda12*" or install torch with pip first
+  - numpy
+  - scipy
+  - pandas
+  - h5py
+  - tifffile
+  - imagecodecs
+  - scikit-image
+  - pillow
+  - matplotlib
+  - python-elf>=0.9         # VOI / adapted Rand / matching (CREMI definitions)
+  - torch_em>=0.10          # UNet2d, AffinityTransform, mutex watershed
+  - pip
+  - pip:
+      - timm>=1.0           # ConvNeXt-V2 encoders (ImageNet-22k weights)
+      - tensorboard

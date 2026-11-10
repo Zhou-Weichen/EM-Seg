@@ -1,0 +1,29 @@
+# Data environment (download, conversion, QA, de-duplication, manifests, HF export, unlabelled pool).
+# Tested with Python 3.11, cloud-volume 12.15, zarr 3.1, datasets 5.1, pyarrow 26, huggingface_hub 2.2, gdown 6.4.
+name: em2d-data
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - pandas
+  - h5py
+  - tifffile
+  - imagecodecs
+  - scikit-image
+  - pillow
+  - imageio
+  - pyarrow
+  - zarr>=3
+  - nibabel                 # NucMM-Z (nii.gz)
+  - libarchive              # bsdtar: RAR5 archives (EMNeuron, AimSeg)
+  - requests
+  - tqdm
+  - pip
+  - pip:
+      - cloud-volume>=12    # anonymous reads of public connectome volumes (precomputed / gs / s3)
+      - tensorstore         # OpenOrganelle-style N5/Zarr volumes
+      - datasets>=3         # Hugging Face datasets (export_hf)
+      - huggingface_hub
+      - gdown               # Google-Drive hosted sources (quota-limited)

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emseg"
+version = "0.1.0"
+description = "Teacher-student pseudo-label pretraining for dense 2D instance segmentation of electron microscopy"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = ["numpy", "scipy", "pandas", "h5py", "tifffile", "pillow", "scikit-image"]
+
+[project.optional-dependencies]
+# training / evaluation (python-elf and torch_em come from conda-forge, see envs/train.yml)
+train = ["torch>=2.4", "timm>=1.0", "python-elf", "torch_em", "matplotlib"]
+# corpus construction and the unlabelled pool
+data = ["cloud-volume>=12", "zarr>=3", "datasets>=3", "pyarrow", "huggingface_hub", "gdown", "nibabel", "tensorstore", "imagecodecs", "requests", "tqdm"]
+
+[project.scripts]
+emseg-eval = "emseg.eval.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["emseg*"]
