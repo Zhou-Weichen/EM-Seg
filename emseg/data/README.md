@@ -78,18 +78,6 @@ r = m[(m.dataset == "cremi") & (m.split == "train")].iloc[0]
 with h5py.File(f"{EMDATA_ROOT}/{r.file}") as f:
     img, lab, valid = f["raw"][r.z], f["labels/cell"][r.z], f["masks/cell"][r.z]
 ```
-
-### Troubleshooting
-
-| symptom | fix |
-|---|---|
-| zenodo.org 403 "unusual traffic" | serialised already; wait and re-run |
-| `gdown` "too many accesses" | Google-Drive quota; retried after 15 min, partial folders are converted |
-| cremi.org certificate error | expired certificate; `--insecure` plus the published sha256 |
-| RAR archives fail to extract | RAR5 needs `bsdtar` (libarchive) |
-| a stream source stalls | watchdog restarts after 8 min; written slabs are kept |
-| `waiting_download` in STATUS.md | run `python -m emseg.data.stages.download <id>` again |
-
 ### Adding a dataset
 
 One `Source(...)` in `emseg/data/registry.py` and one reader `job_<id>()` in `emseg/data/converters/downloaded.py`
